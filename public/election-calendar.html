@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Election Calendar — Campaign in a Box</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, serif; background: #f4f1eb; color: #1a1a1a; min-height: 100vh; }
+
+  .app { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* ── Header ── */
+  .header { text-align: center; margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 2px solid #1a1a1a; }
+  .header h1 { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.4rem; }
+  .header p { font-size: 1rem; color: #555; font-style: italic; }
+  .nav-link { display: inline-block; margin-top: 0.75rem; font-size: 0.82rem; color: #888; text-decoration: none; font-style: italic; }
+  .nav-link:hover { color: #1a1a1a; text-decoration: underline; }
+
+  /* ── Search bar ── */
+  .search-section { background: #fff; border: 1.5px solid #1a1a1a; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .search-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin-bottom: 0.5rem; font-family: Georgia, serif; }
+  .search-row { display: flex; gap: 8px; }
+  .search-row input { flex: 1; border: 1px solid #ccc; border-radius: 6px; padding: 10px 14px; font-size: 0.95rem; font-family: Georgia, serif; color: #1a1a1a; background: #fafafa; }
+  .search-row input:focus { outline: none; border-color: #1a1a1a; }
+  .search-row select { border: 1px solid #ccc; border-radius: 6px; padding: 10px 12px; font-size: 0.88rem; font-family: Georgia, serif; background: #fafafa; color: #1a1a1a; cursor: pointer; }
+  .search-row select:focus { outline: none; border-color: #1a1a1a; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 7px; font-size: 0.9rem; font-weight: 700; cursor: pointer; border: 1.5px solid #1a1a1a; background: transparent; color: #1a1a1a; font-family: Georgia, serif; transition: background 0.15s, color 0.15s; letter-spacing: 0.02em; white-space: nowrap; }
+  .btn:hover { background: #1a1a1a; color: #fff; }
+  .btn-primary { background: #1a1a1a; color: #fff; }
+  .btn-primary:hover { background: #333; }
+  .btn-primary:disabled { background: #ccc; border-color: #ccc; color: #888; cursor: not-allowed; }
+  .btn-sm { padding: 6px 14px; font-size: 0.82rem; }
+  .btn-ghost { border-color: #ccc; color: #888; }
+  .btn-ghost:hover { background: #f4f1eb; color: #1a1a1a; border-color: #1a1a1a; }
+
+  /* ── Tabs ── */
+  .tab-row { display: flex; gap: 0; border-bottom: 2px solid #1a1a1a; margin-bottom: 1.5rem; }
+  .tab { padding: 8px 20px; font-size: 0.88rem; font-weight: 700; cursor: pointer; color: #888; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: Georgia, serif; letter-spacing: 0.04em; text-transform: uppercase; }
+  .tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+  .tab:hover { color: #1a1a1a; }
+
+  /* ── Filter chips ── */
+  .filter-row { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; }
+  .filter-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-right: 4px; }
+  .chip { font-size: 0.8rem; padding: 4px 14px; border-radius: 20px; border: 1.5px solid #ccc; cursor: pointer; background: transparent; color: #888; font-family: Georgia, serif; transition: all 0.15s; }
+  .chip:hover { border-color: #1a1a1a; color: #1a1a1a; }
+  .chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  /* ── Calendar ── */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .cal-month-title { font-size: 1.3rem; font-weight: 700; }
+  .cal-year { font-size: 1rem; color: #888; font-style: italic; margin-left: 6px; }
+  .cal-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #666; }
+  .leg-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .cal-day-headers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 3px; }
+  .cal-day-hdr { text-align: center; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #999; padding: 4px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-cell { min-height: 72px; background: #fff; border: 1px solid #e0ddd6; border-radius: 6px; padding: 5px; position: relative; }
+  .cal-cell.other-month { background: #f4f1eb; opacity: 0.6; }
+  .cal-cell.today { border: 2px solid #1a1a1a; }
+  .cal-cell.has-events { cursor: default; }
+  .cal-num { font-size: 0.72rem; color: #aaa; margin-bottom: 3px; }
+  .cal-cell.today .cal-num { color: #1a1a1a; font-weight: 700; }
+  .cal-event { font-size: 0.65rem; line-height: 1.3; border-radius: 3px; padding: 1px 4px; margin-bottom: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: Georgia, serif; }
+  .cal-event:hover { opacity: 0.8; }
+  .ev-filing { background: #fde8dc; color: #7a2e12; }
+  .ev-primary { background: #e8e6fb; color: #3b2d8a; }
+  .ev-election { background: #dff0d8; color: #2d6a30; }
+  .ev-runoff { background: #fef3d0; color: #7a5408; }
+  .cal-more { font-size: 0.62rem; color: #aaa; }
+
+  /* ── Race cards ── */
+  .races-list { display: flex; flex-direction: column; gap: 12px; }
+  .race-card { background: #fff; border: 1.5px solid #e0ddd6; border-radius: 10px; padding: 1.25rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+  .race-card:hover { border-color: #1a1a1a; box-shadow: 0 3px 12px rgba(0,0,0,0.06); }
+  .race-card.selected { border: 2px solid #1a1a1a; }
+  .race-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .race-office { font-size: 1rem; font-weight: 700; }
+  .race-jurisdiction { font-size: 0.82rem; color: #666; font-style: italic; margin-top: 2px; }
+  .level-badge { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; white-space: nowrap; font-family: Georgia, serif; flex-shrink: 0; }
+  .badge-federal { background: #dce8f8; color: #1a3f6e; }
+  .badge-state { background: #e8e6fb; color: #3b2d8a; }
+  .badge-local { background: #dff0d8; color: #2d6a30; }
+  .race-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 10px; }
+  .date-box { background: #f4f1eb; border-radius: 6px; padding: 7px 10px; }
+  .date-box-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: #999; margin-bottom: 3px; }
+  .date-box-val { font-size: 0.82rem; font-weight: 700; color: #1a1a1a; }
+  .date-box-val.urgent { color: #c0392b; }
+  .race-notes { font-size: 0.82rem; color: #666; font-style: italic; margin-top: 10px; line-height: 1.5; border-top: 1px solid #f0ede6; padding-top: 8px; }
+
+  /* ── Detail panel ── */
+  .detail-panel { background: #fff; border: 2px solid #1a1a1a; border-radius: 10px; padding: 1.5rem; margin-top: 1.5rem; }
+  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
+  .detail-office { font-size: 1.3rem; font-weight: 700; }
+  .detail-jurisdiction { font-size: 0.88rem; color: #666; font-style: italic; margin-top: 3px; }
+  .detail-close { cursor: pointer; color: #aaa; font-size: 1.4rem; line-height: 1; padding: 2px 6px; }
+  .detail-close:hover { color: #1a1a1a; }
+  .candidates-section { margin-top: 1rem; }
+  .candidates-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #999; margin-bottom: 8px; }
+  .candidates-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .candidate-tag { font-size: 0.82rem; padding: 4px 12px; border-radius: 20px; border: 1px solid #ccc; color: #444; }
+  .detail-actions { display: flex; gap: 10px; margin-top: 1.25rem; flex-wrap: wrap; }
+
+  /* ── Status states ── */
+  .empty-state { text-align: center; padding: 4rem 1rem; }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+  .empty-state h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .empty-state p { font-size: 0.9rem; color: #666; font-style: italic; }
+  .loading-state { text-align: center; padding: 4rem 1rem; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #ddd; border-top-color: #1a1a1a; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-msg { font-size: 0.95rem; color: #666; font-style: italic; }
+  .error-box { background: #fde8dc; border: 1.5px solid #e09070; border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.88rem; color: #7a2e12; margin-bottom: 1.25rem; }
+
+  /* ── Summary bar ── */
+  .summary-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .summary-card { background: #fff; border: 1px solid #e0ddd6; border-radius: 8px; padding: 10px 14px; text-align: center; }
+  .summary-num { font-size: 1.5rem; font-weight: 700; }
+  .summary-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-top: 2px; }
+
+  /* ── Tracked races panel ── */
+  .tracked-section { margin-top: 1.5rem; }
+  .tracked-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1.5px solid #1a1a1a; padding-bottom: 0.5rem; }
+  .tracked-title { font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .tracked-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .tracked-card { background: #fff; border: 1.5px solid #e0ddd6; border-radius: 8px; padding: 1rem; position: relative; }
+  .tracked-card .t-office { font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
+  .tracked-card .t-juris { font-size: 0.78rem; color: #888; font-style: italic; margin-bottom: 8px; }
+  .tracked-card .t-next { font-size: 0.78rem; color: #c0392b; font-weight: 700; }
+  .tracked-card .t-next-lbl { font-size: 0.68rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; }
+  .tracked-remove { position: absolute; top: 8px; right: 10px; cursor: pointer; color: #ccc; font-size: 1rem; }
+  .tracked-remove:hover { color: #c0392b; }
+  .empty-tracked { font-size: 0.85rem; color: #aaa; font-style: italic; }
+
+  @media (max-width: 600px) {
+    .header h1 { font-size: 1.6rem; }
+    .search-row { flex-wrap: wrap; }
+    .search-row select { width: 100%; }
+    .cal-cell { min-height: 52px; }
+    .cal-event { display: none; }
+    .cal-cell.has-events::after { content: '•'; font-size: 14px; color: #1a1a1a; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>&#128197; Election Calendar</h1>
+    <p>Upcoming races, filing deadlines &amp; key dates — powered by live search</p>
+    <a href="/" class="nav-link">&#8592; Back to Campaign in a Box</a>
+  </div>
+
+  <!-- Search -->
+  <div class="search-section">
+    <div class="search-label">Search races by location</div>
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="State, city, or district (e.g. New Jersey, Cook County IL, TX-07)" />
+      <select id="cycleSelect">
+        <option value="2025-2026">2025–2026 cycle</option>
+        <option value="2026">2026 only</option>
+        <option value="2025">2025 only</option>
+      </select>
+      <button class="btn btn-primary" id="searchBtn" onclick="doSearch()">Search</button>
+    </div>
+  </div>
+
+  <div id="errorBox" style="display:none" class="error-box"></div>
+
+  <!-- Main content area -->
+  <div id="mainContent">
+    <div class="empty-state">
+      <div class="empty-icon">&#127759;</div>
+      <h3>Search for a location to get started</h3>
+      <p>Enter a state, city, or district above.<br>Federal, state, and local races will load with key dates.</p>
+    </div>
+  </div>
+
+  <!-- Tracked races (persists across searches) -->
+  <div class="tracked-section" id="trackedSection" style="display:none">
+    <div class="tracked-header">
+      <div class="tracked-title">&#128204; Tracked races</div>
+      <button class="btn btn-ghost btn-sm" onclick="clearTracked()">Clear all</button>
+    </div>
+    <div class="tracked-grid" id="trackedGrid"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const state = {
+  races: [],
+  view: 'calendar',
+  filter: 'all',
+  calYear: new Date().getFullYear(),
+  calMonth: new Date().getMonth(),
+  selected: null,
+  query: '',
+  tracked: JSON.parse(localStorage.getItem('ec_tracked') || '[]')
+};
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
+function fmtDate(s) {
+  if (!s || s === 'TBD') return 'TBD';
+  const d = new Date(s + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function daysUntil(s) {
+  if (!s || s === 'TBD') return null;
+  const d = new Date(s + 'T12:00:00');
+  const n = new Date(); n.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  return Math.round((d - n) / 86400000);
+}
+
+function nextDeadline(race) {
+  const dates = [
+    { label: 'Filing', date: race.filing_deadline },
+    { label: 'Primary', date: race.primary_date },
+    { label: 'Election', date: race.election_date }
+  ].filter(x => x.date && x.date !== 'TBD');
+  const future = dates.filter(x => daysUntil(x.date) >= 0).sort((a,b) => a.date.localeCompare(b.date));
+  return future[0] || null;
+}
+
+function levelBadge(level) {
+  const cls = level === 'Federal' ? 'badge-federal' : level === 'State' ? 'badge-state' : 'badge-local';
+  return `<span class="level-badge ${cls}">${level}</span>`;
+}
+
+function allEvents() {
+  const ev = [];
+  state.races.forEach(r => {
+    if (r.filing_deadline && r.filing_deadline !== 'TBD') ev.push({ date: r.filing_deadline, type: 'filing', label: r.office, race: r });
+    if (r.primary_date && r.primary_date !== 'TBD') ev.push({ date: r.primary_date, type: 'primary', label: r.office, race: r });
+    if (r.election_date && r.election_date !== 'TBD') ev.push({ date: r.election_date, type: 'election', label: r.office, race: r });
+    if (r.runoff_date && r.runoff_date !== 'TBD') ev.push({ date: r.runoff_date, type: 'runoff', label: r.office, race: r });
+  });
+  return ev;
+}
+
+function filteredRaces() {
+  return state.races.filter(r => state.filter === 'all' || r.level.toLowerCase() === state.filter);
+}
+
+// ─── Calendar renderer ───────────────────────────────────────────────────────
+function renderCalendar() {
+  const { calYear: y, calMonth: m } = state;
+  const events = allEvents().filter(e => {
+    const er = state.races.filter(r => state.filter === 'all' || r.level.toLowerCase() === state.filter);
+    return er.includes(e.race);
+  });
+  const today = new Date();
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  let cells = '';
+  for (let i = 0; i < firstDay; i++) {
+    const d = new Date(y, m, -firstDay + i + 1).getDate();
+    cells += `<div class="cal-cell other-month"><div class="cal-num">${d}</div></div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = today.getFullYear()===y && today.getMonth()===m && today.getDate()===d;
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEvs = events.filter(e => e.date === key);
+    const dots = dayEvs.slice(0, 3).map(e => {
+      const idx = state.races.indexOf(e.race);
+      const short = e.label.length > 18 ? e.label.slice(0, 16) + '…' : e.label;
+      return `<div class="cal-event ev-${e.type}" onclick="selectRace(${idx})" title="${e.label} — ${e.type}">${short}</div>`;
+    }).join('');
+    const more = dayEvs.length > 3 ? `<div class="cal-more">+${dayEvs.length - 3} more</div>` : '';
+    cells += `<div class="cal-cell${isToday ? ' today' : ''}${dayEvs.length ? ' has-events' : ''}"><div class="cal-num">${d}</div>${dots}${more}</div>`;
+  }
+  const rem = (7 - ((firstDay + daysInMonth) % 7)) % 7;
+  for (let d = 1; d <= rem; d++) cells += `<div class="cal-cell other-month"><div class="cal-num">${d}</div></div>`;
+
+  return `
+    <div class="cal-nav">
+      <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">&#8592; Prev</button>
+      <div class="cal-month-title">${MONTHS[m]}<span class="cal-year">${y}</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">Next &#8594;</button>
+    </div>
+    <div class="cal-legend">
+      <div class="leg"><div class="leg-swatch" style="background:#fde8dc"></div>Filing deadline</div>
+      <div class="leg"><div class="leg-swatch" style="background:#e8e6fb"></div>Primary</div>
+      <div class="leg"><div class="leg-swatch" style="background:#dff0d8"></div>Election day</div>
+      <div class="leg"><div class="leg-swatch" style="background:#fef3d0"></div>Runoff</div>
+    </div>
+    <div class="cal-day-headers">${DAYS_SHORT.map(d => `<div class="cal-day-hdr">${d}</div>`).join('')}</div>
+    <div class="cal-grid">${cells}</div>
+  `;
+}
+
+// ─── Race list renderer ───────────────────────────────────────────────────────
+function renderRaceCard(r, i) {
+  const du = daysUntil(r.filing_deadline);
+  const urgentFiling = du !== null && du >= 0 && du <= 30;
+  const isTracked = state.tracked.some(t => t.office === r.office && t.jurisdiction === r.jurisdiction);
+  return `
+    <div class="race-card${state.selected === i ? ' selected' : ''}" onclick="selectRace(${i})">
+      <div class="race-card-top">
+        <div>
+          <div class="race-office">${r.office}</div>
+          <div class="race-jurisdiction">${r.jurisdiction}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${levelBadge(r.level)}
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleTrack(${i})" title="${isTracked ? 'Untrack' : 'Track this race'}" style="padding:4px 10px;font-size:0.75rem">${isTracked ? '&#128204; Tracked' : '+ Track'}</button>
+        </div>
+      </div>
+      <div class="race-dates">
+        <div class="date-box">
+          <div class="date-box-label">Filing deadline</div>
+          <div class="date-box-val${urgentFiling ? ' urgent' : ''}">${fmtDate(r.filing_deadline)}${urgentFiling && du > 0 ? ` (${du}d)` : urgentFiling && du === 0 ? ' (today!)' : ''}</div>
+        </div>
+        ${r.primary_date ? `<div class="date-box"><div class="date-box-label">Primary</div><div class="date-box-val">${fmtDate(r.primary_date)}</div></div>` : ''}
+        <div class="date-box">
+          <div class="date-box-label">Election day</div>
+          <div class="date-box-val">${fmtDate(r.election_date)}</div>
+        </div>
+        ${r.runoff_date ? `<div class="date-box"><div class="date-box-label">Runoff</div><div class="date-box-val">${fmtDate(r.runoff_date)}</div></div>` : ''}
+      </div>
+      ${r.notes ? `<div class="race-notes">${r.notes}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderDetail(r, i) {
+  if (!r) return '';
+  const isTracked = state.tracked.some(t => t.office === r.office && t.jurisdiction === r.jurisdiction);
+  const du = daysUntil(r.filing_deadline);
+  const urgentFiling = du !== null && du >= 0 && du <= 30;
+  return `
+    <div class="detail-panel">
+      <div class="detail-header">
+        <div>
+          <div class="detail-office">${r.office}</div>
+          <div class="detail-jurisdiction">${r.jurisdiction} &mdash; ${levelBadge(r.level)}</div>
+        </div>
+        <span class="detail-close" onclick="state.selected=null;renderMain()">&#10005;</span>
+      </div>
+      <div class="race-dates">
+        <div class="date-box">
+          <div class="date-box-label">Filing deadline</div>
+          <div class="date-box-val${urgentFiling ? ' urgent' : ''}">${fmtDate(r.filing_deadline)}${urgentFiling && du > 0 ? ` — ${du} days` : urgentFiling && du === 0 ? ' — Today!' : ''}</div>
+        </div>
+        ${r.primary_date ? `<div class="date-box"><div class="date-box-label">Primary</div><div class="date-box-val">${fmtDate(r.primary_date)}</div></div>` : ''}
+        <div class="date-box">
+          <div class="date-box-label">Election day</div>
+          <div class="date-box-val">${fmtDate(r.election_date)}</div>
+        </div>
+        ${r.runoff_date ? `<div class="date-box"><div class="date-box-label">Runoff</div><div class="date-box-val">${fmtDate(r.runoff_date)}</div></div>` : ''}
+      </div>
+      ${r.notes ? `<div class="race-notes" style="border-top:none;padding-top:0;margin-top:12px">${r.notes}</div>` : ''}
+      ${r.candidates && r.candidates.length ? `
+        <div class="candidates-section">
+          <div class="candidates-label">Known candidates</div>
+          <div class="candidates-list">${r.candidates.map(c => `<span class="candidate-tag">${c}</span>`).join('')}</div>
+        </div>
+      ` : ''}
+      <div class="detail-actions">
+        <button class="btn btn-primary btn-sm" onclick="launchCampaignBox(${i})">Open in Campaign in a Box &#8599;</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleTrack(${i})">${isTracked ? '&#128204; Untrack race' : '+ Track this race'}</button>
+      </div>
+    </div>
+  `;
+}
+
+// ─── Summary bar ─────────────────────────────────────────────────────────────
+function renderSummary() {
+  const fr = filteredRaces();
+  const federal = fr.filter(r => r.level === 'Federal').length;
+  const stateR = fr.filter(r => r.level === 'State').length;
+  const local = fr.filter(r => r.level === 'Local').length;
+  const urgent = fr.filter(r => { const du = daysUntil(r.filing_deadline); return du !== null && du >= 0 && du <= 30; }).length;
+  return `
+    <div class="summary-bar">
+      <div class="summary-card"><div class="summary-num">${fr.length}</div><div class="summary-lbl">Total races</div></div>
+      <div class="summary-card"><div class="summary-num">${federal}</div><div class="summary-lbl">Federal</div></div>
+      <div class="summary-card"><div class="summary-num">${stateR}</div><div class="summary-lbl">State</div></div>
+      <div class="summary-card"><div class="summary-num">${local}</div><div class="summary-lbl">Local</div></div>
+      ${urgent ? `<div class="summary-card" style="border-color:#e09070"><div class="summary-num" style="color:#c0392b">${urgent}</div><div class="summary-lbl">Filing soon</div></div>` : ''}
+    </div>
+  `;
+}
+
+// ─── Tracked races ────────────────────────────────────────────────────────────
+function toggleTrack(i) {
+  const r = state.races[i];
+  const key = r.office + '|' + r.jurisdiction;
+  const idx = state.tracked.findIndex(t => t.office + '|' + t.jurisdiction === key);
+  if (idx >= 0) {
+    state.tracked.splice(idx, 1);
+  } else {
+    state.tracked.push({ office: r.office, jurisdiction: r.jurisdiction, level: r.level, filing_deadline: r.filing_deadline, primary_date: r.primary_date, election_date: r.election_date, runoff_date: r.runoff_date });
+  }
+  localStorage.setItem('ec_tracked', JSON.stringify(state.tracked));
+  renderMain();
+  renderTracked();
+}
+
+function clearTracked() {
+  state.tracked = [];
+  localStorage.setItem('ec_tracked', '[]');
+  renderTracked();
+}
+
+function renderTracked() {
+  const sec = document.getElementById('trackedSection');
+  const grid = document.getElementById('trackedGrid');
+  if (!state.tracked.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  grid.innerHTML = state.tracked.map((r, i) => {
+    const nd = nextDeadline(r);
+    const du = nd ? daysUntil(nd.date) : null;
+    return `
+      <div class="tracked-card">
+        <span class="tracked-remove" onclick="removeTracked(${i})">&#10005;</span>
+        <div class="t-office">${r.office}</div>
+        <div class="t-juris">${r.jurisdiction}</div>
+        ${nd ? `<div class="t-next-lbl">${nd.label}</div><div class="t-next">${fmtDate(nd.date)}${du !== null && du >= 0 && du <= 60 ? ` — ${du}d` : ''}</div>` : '<div class="t-next" style="color:#aaa">No upcoming dates</div>'}
+      </div>
+    `;
+  }).join('');
+}
+
+function removeTracked(i) {
+  state.tracked.splice(i, 1);
+  localStorage.setItem('ec_tracked', JSON.stringify(state.tracked));
+  renderTracked();
+  renderMain();
+}
+
+// ─── Main render ─────────────────────────────────────────────────────────────
+function renderMain() {
+  const main = document.getElementById('mainContent');
+  if (!state.races.length) return;
+
+  const fr = filteredRaces();
+  const tabs = `
+    <div class="tab-row">
+      <div class="tab${state.view==='calendar'?' active':''}" onclick="state.view='calendar';state.selected=null;renderMain()">Calendar</div>
+      <div class="tab${state.view==='list'?' active':''}" onclick="state.view='list';renderMain()">Race list (${fr.length})</div>
+    </div>
+  `;
+  const filters = `
+    <div class="filter-row">
+      <span class="filter-label">Filter:</span>
+      ${['all','federal','state','local'].map(f => `<div class="chip${state.filter===f?' active':''}" onclick="state.filter='${f}';renderMain()">${f==='all'?'All races':f.charAt(0).toUpperCase()+f.slice(1)}</div>`).join('')}
+    </div>
+  `;
+  const summary = renderSummary();
+  const calOrList = state.view === 'calendar' ? renderCalendar() : `<div class="races-list">${fr.map((r,i)=>raceCardHTML(r,i)).join('')}</div>`;
+  const detail = state.selected !== null ? renderDetail(state.races[state.selected], state.selected) : '';
+
+  main.innerHTML = summary + tabs + filters + calOrList + detail;
+}
+
+function raceCardHTML(r, i) {
+  const actualIdx = state.races.indexOf(r);
+  const du = daysUntil(r.filing_deadline);
+  const urgentFiling = du !== null && du >= 0 && du <= 30;
+  const isTracked = state.tracked.some(t => t.office === r.office && t.jurisdiction === r.jurisdiction);
+  return `
+    <div class="race-card${state.selected === actualIdx ? ' selected' : ''}" onclick="selectRace(${actualIdx})">
+      <div class="race-card-top">
+        <div>
+          <div class="race-office">${r.office}</div>
+          <div class="race-jurisdiction">${r.jurisdiction}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${levelBadge(r.level)}
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleTrack(${actualIdx})" style="padding:4px 10px;font-size:0.75rem">${isTracked ? '&#128204;' : '+ Track'}</button>
+        </div>
+      </div>
+      <div class="race-dates">
+        <div class="date-box">
+          <div class="date-box-label">Filing deadline</div>
+          <div class="date-box-val${urgentFiling?' urgent':''}">${fmtDate(r.filing_deadline)}${urgentFiling&&du>0?` (${du}d)`:urgentFiling&&du===0?' (today!)':''}</div>
+        </div>
+        ${r.primary_date?`<div class="date-box"><div class="date-box-label">Primary</div><div class="date-box-val">${fmtDate(r.primary_date)}</div></div>`:''}
+        <div class="date-box"><div class="date-box-label">Election day</div><div class="date-box-val">${fmtDate(r.election_date)}</div></div>
+        ${r.runoff_date?`<div class="date-box"><div class="date-box-label">Runoff</div><div class="date-box-val">${fmtDate(r.runoff_date)}</div></div>`:''}
+      </div>
+      ${r.notes?`<div class="race-notes">${r.notes}</div>`:''}
+    </div>
+  `;
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function selectRace(i) {
+  state.selected = state.selected === i ? null : i;
+  state.view = 'list';
+  renderMain();
+  if (state.selected !== null) {
+    setTimeout(() => {
+      const panel = document.querySelector('.detail-panel');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+}
+
+function changeMonth(d) {
+  state.calMonth += d;
+  if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+  if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+  renderMain();
+}
+
+function launchCampaignBox(i) {
+  const r = state.races[i];
+  const params = new URLSearchParams({ office: r.office, jurisdiction: r.jurisdiction, level: r.level });
+  window.location.href = '/?' + params.toString();
+}
+
+// ─── API call ─────────────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  const cycle = document.getElementById('cycleSelect').value;
+  if (!q) { document.getElementById('searchInput').focus(); return; }
+
+  state.query = q;
+  state.races = [];
+  state.selected = null;
+  state.filter = 'all';
+
+  const errBox = document.getElementById('errorBox');
+  errBox.style.display = 'none';
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <div class="loading-msg">Searching for races in ${q}...</div>
+    </div>`;
+  document.getElementById('searchBtn').disabled = true;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const prompt = `Return ONLY a valid JSON array, no markdown or explanation. List upcoming election races for "${q}" for the ${cycle} election cycle (from ${todayStr}). Include all federal, state, and notable local races. Each object must have: office (string), jurisdiction (string), level (exactly "Federal", "State", or "Local"), filing_deadline ("YYYY-MM-DD" or "TBD"), primary_date ("YYYY-MM-DD" or null), election_date ("YYYY-MM-DD" or "TBD"), runoff_date ("YYYY-MM-DD" or null), candidates (array of known name strings, empty if unknown), notes (1-2 sentence string with context on the race: incumbents, competitiveness, district). Return 10-25 races, prioritizing completeness.`;
+
+  try {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || `API error ${res.status}`);
+
+    const txt = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const s = txt.indexOf('['), e = txt.lastIndexOf(']');
+    if (s === -1 || e === -1) throw new Error('No race data returned. Try a more specific location.');
+    const races = JSON.parse(txt.slice(s, e + 1));
+    if (!Array.isArray(races) || !races.length) throw new Error('No races found for this location.');
+
+    state.races = races;
+
+    // Auto-navigate calendar to nearest upcoming date
+    const upcomingDates = races
+      .flatMap(r => [r.filing_deadline, r.primary_date, r.election_date].filter(d => d && d !== 'TBD'))
+      .filter(d => daysUntil(d) >= 0)
+      .sort();
+    if (upcomingDates.length) {
+      const nearest = new Date(upcomingDates[0] + 'T12:00:00');
+      state.calYear = nearest.getFullYear();
+      state.calMonth = nearest.getMonth();
+    }
+
+    renderMain();
+    renderTracked();
+  } catch (err) {
+    document.getElementById('mainContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">&#9888;&#65039;</div>
+        <h3>Search failed</h3>
+        <p>${err.message}</p>
+      </div>`;
+    errBox.textContent = err.message;
+    errBox.style.display = 'block';
+  } finally {
+    document.getElementById('searchBtn').disabled = false;
+  }
+}
+
+// Enter key on search input
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// Init tracked panel on load
+renderTracked();
+</script>
+</body>
+</html>
