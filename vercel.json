@@ -6,6 +6,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/election-calender", "dest": "/public/election-calender.html" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/public/$1" },
     { "src": "/", "dest": "/public/index.html" }
